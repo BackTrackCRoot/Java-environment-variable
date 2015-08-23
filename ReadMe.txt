@@ -1,4 +1,7 @@
-﻿This is a simple project
+﻿Introduction
+==================================
+
+This is a simple project
 
 so i write code in a file.
 
@@ -11,3 +14,12 @@ If you have a good idea , please tell me.
 Wrote by CRoot
 
 2015/8/23
+
+Edition
+====================================
+
+### v1.0
+
+Now this edition may be have some bug ,
+
+Please backup you environment before you use it program.

@@ -150,6 +150,7 @@ void CJavaenvironmentvariableDlg::OnBnClickedButton1()
 
 	//Let all program to refresh own Environment variable
 	SendMessageTimeout(HWND_BROADCAST, WM_SETTINGCHANGE, 0, (LPARAM)L"Environment", SMTO_ABORTIFHUNG, 3000, NULL);
+	MessageBox(L"设置环境变量失败！");
 	goto OK;
 JmpError:MessageBox(L"设置环境变量失败！");
 OK:;

@@ -17,6 +17,10 @@ Wrote by CRoot
 
 Edition
 ====
+#### v1.1
+
+Fix one bug, it cause environment set failed , and it can empty path.
+
 
 #### v1.0
 

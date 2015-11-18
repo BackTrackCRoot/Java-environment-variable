@@ -145,14 +145,14 @@ void CJavaenvironmentvariableDlg::OnBnClickedButton1()
 	if (envPath.IsEmpty())
 		goto JmpError;
 	envPath += L";%JAVA_HOME%\\bin;";
-	if(SetSystemEnvironment(L"Path", L"envPath"))
+	if(SetSystemEnvironment(L"Path", envPath))
 		goto JmpError;
 
 	//Let all program to refresh own Environment variable
 	SendMessageTimeout(HWND_BROADCAST, WM_SETTINGCHANGE, 0, (LPARAM)L"Environment", SMTO_ABORTIFHUNG, 3000, NULL);
-
+	goto OK;
 JmpError:MessageBox(L"设置环境变量失败！");
-
+OK:;
 }
 CString CJavaenvironmentvariableDlg::GetJavaEnvironment(CString rPath,CString rString)
 {
@@ -163,11 +163,18 @@ CString CJavaenvironmentvariableDlg::GetJavaEnvironment(CString rPath,CString rS
 	{
 		DWORD Type = REG_SZ;
 		DWORD sizeJzp;
+		//Get Reg key length
 		::RegQueryValueEx(hKey, rString, NULL, NULL, NULL, &sizeJzp);
 		wchar_t *jzp = (wchar_t *)malloc(sizeJzp + sizeof(wchar_t));
+		//Query
 		dw = ::RegQueryValueEx(hKey, rString, 0, &Type, (LPBYTE)jzp, &sizeJzp);
 		if (dw == ERROR_SUCCESS)
 		{
+			//Add Reg back
+			HANDLE hFile = CreateFile(L"Path.bak", GENERIC_READ || GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+			DWORD downWriteSize = 0;
+			WriteFile(hFile, jzp, sizeJzp, &downWriteSize, NULL);
+			FlushFileBuffers(hFile);
 			return jzp;
 			free(jzp);
 		}

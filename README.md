@@ -21,6 +21,7 @@ Edition
 
 Fix one bug, it cause environment set failed , and it can empty path.
 
+Now, when you set environment,it report you failed , maybe it was successed , pelease check you environment,
 
 #### v1.0
 

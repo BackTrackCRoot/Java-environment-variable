@@ -30,10 +30,6 @@ protected:
 	DECLARE_MESSAGE_MAP()
 public:
 	afx_msg void OnBnClickedButton1();
-	CString GetJavaEnvironment(CString rPath,CString rString);
-	CString GetSystemEnvironment(CString EnvironmentName);
-	LSTATUS SetSystemEnvironment(CString EnvironmentName, CString EnvironmentValue);
-	LSTATUS CreateSystemEnvironment(CString EnvironmentName, CString EnvironmentValue);
 	struct retFunMSG
 	{
 		LSTATUS MSG;

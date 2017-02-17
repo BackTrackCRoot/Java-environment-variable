@@ -1,5 +1,16 @@
-﻿Introduction
+
+Introduction
 ====
+
+##### Updated 2017-02-17：
+
+rewrite all code,fix some bug.
+
+but i find back environment have some problem now.(Test in Windows 8.1 Home x64)
+
+
+
+##### Created at 2015-8-23: 
 
 This is a simple project
 
@@ -15,8 +26,13 @@ Wrote by CRoot
 
 2015/8/23
 
+
 Edition
 ====
+#### V2.0
+
+Rewrite all code.
+
 #### v1.1
 
 Fix one bug, it cause environment set failed , and it can empty path.

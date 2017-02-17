@@ -6,6 +6,7 @@
 #include "Java environment variable.h"
 #include "Java environment variableDlg.h"
 #include "afxdialogex.h"
+#include "RegisterUtil.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -48,31 +49,13 @@ BOOL CJavaenvironmentvariableDlg::OnInitDialog()
 	ShowWindow(SW_SHOW);
 
 	// TODO:  在此添加额外的初始化代码
-	// Get Java environment variable install path
-	/*CRegKey key;
-	wchar_t JavaHome[40];
-	ULONG szJavaHome = 40;
-	if (key.Open(HKEY_LOCAL_MACHINE, L"\\SOFTWARE\\JavaSoft\\Java Development Kit\\1.8") == ERROR_SUCCESS)
-	{
-		//
-		;
-	}
-	else
-	{
-		auto err = GetLastError()
-		;
-		MessageBox(L"");
-	}
-	key.QueryStringValue(L"JavaHome", JavaHome, &szJavaHome);*/
-	//MessageBox(L"SOFTWARE\\JavaSoft\\Java Development Kit\\1.8");
 
-
-	CString jdkpath = GetJavaEnvironment(L"SOFTWARE\\JavaSoft\\Java Development Kit\\1.8", L"JavaHome");
+	CString jdkpath = CRegisterUtil::GetJavaEnvironment(L"SOFTWARE\\JavaSoft\\Java Development Kit\\1.8", L"JavaHome");
 	if (jdkpath != "")
 		GetDlgItem(IDC_EDIT1)->SetWindowTextW(jdkpath);
 	else
 		MessageBox(L"JDK获取环境初始化失败，请手动填写！");
-	CString jrepath = GetJavaEnvironment(L"SOFTWARE\\JavaSoft\\Java Runtime Environment\\1.8", L"JavaHome");
+	CString jrepath = CRegisterUtil::GetJavaEnvironment(L"SOFTWARE\\JavaSoft\\Java Runtime Environment\\1.8", L"JavaHome");
 	if (jrepath != "")
 		GetDlgItem(IDC_EDIT2)->SetWindowTextW(jrepath);
 	else
@@ -126,153 +109,44 @@ void CJavaenvironmentvariableDlg::OnBnClickedButton1()
 	// config button--
 	//JAVA_HOME
 	//CLASSPATH:.;%JAVA_HOME%\lib\dt.jar;%JAVA_HOME%\lib\tools.jar
-	//PARH:%JAVA_HOME%\bin;
-	CString envPath;
-	CString javahome;
+	//Path:%JAVA_HOME%\bin;
 
-	if (CreateSystemEnvironment(L"CLASSPATH", L".;%JAVA_HOME%\\lib\\dt.jar;%JAVA_HOME%\\lib\\tools.jar") != ERROR_SUCCESS)
-		goto JmpError;
-	
+
+	boolean isInstall = false;//Check environment instll status
+	CString javahome,path;
+	int updateError = 0;
+	isInstall = !CRegisterUtil::GetSystemEnvironment(L"CLASSPATH").IsEmpty() || isInstall;//check CLASSPATH exeist
+	isInstall = !CRegisterUtil::GetSystemEnvironment(L"JAVA_HOME").IsEmpty() || isInstall;//check JAVA_HOME exeist
+	if (isInstall)
+	{
+		if (!MessageBox(L"Your environment was exists, Do you want overwrite it? ", L"Warrning", MB_YESNO))
+			return;
+	}
 	GetDlgItem(IDC_EDIT1)->GetWindowTextW(javahome);
-	if (javahome != "")
+	if (!javahome.IsEmpty())
 	{
-		if (CreateSystemEnvironment(L"JAVA_HOME", javahome) != ERROR_SUCCESS)
-			goto JmpError;
+		if (CRegisterUtil::CreateSystemEnvironment(L"JAVA_HOME", javahome) == ERROR_SUCCESS)
+		{
+			if (CRegisterUtil::CreateSystemEnvironment(L"CLASSPATH", L".;%JAVA_HOME%\\lib\\dt.jar;%JAVA_HOME%\\lib\\tools.jar") == ERROR_SUCCESS)
+			{
+				if (!(path = CRegisterUtil::GetSystemEnvironment(L"Path")).IsEmpty())
+				{
+					path += path.Right(1) == L";" ? L"%JAVA_HOME%\\bin;" : L";%JAVA_HOME%\\bin;";
+					if (CRegisterUtil::SetSystemEnvironment(L"Path", path) == ERROR_SUCCESS)
+					{
+						MessageBox(L"Successful! Please use java -version to check.", L"Successful", MB_OK);
+						return;
+					}
+					updateError++;
+				}
+				updateError++;
+			}
+			updateError++;
+		}
+		updateError++;
 	}
+	if (updateError == 0)
+		MessageBox(L"Please input your java install path!", L"Error", MB_OK);
 	else
-		MessageBox(L"请填写环境变量！");
-	envPath = GetSystemEnvironment(L"Path");
-	if (envPath.IsEmpty())
-		goto JmpError;
-	envPath += L";%JAVA_HOME%\\bin;";
-	if(SetSystemEnvironment(L"Path", envPath))
-		goto JmpError;
-
-	//Let all program to refresh own Environment variable
-	SendMessageTimeout(HWND_BROADCAST, WM_SETTINGCHANGE, 0, (LPARAM)L"Environment", SMTO_ABORTIFHUNG, 3000, NULL);
-	MessageBox(L"设置环境变量失败！");
-	goto OK;
-JmpError:MessageBox(L"设置环境变量失败！");
-OK:;
-}
-CString CJavaenvironmentvariableDlg::GetJavaEnvironment(CString rPath,CString rString)
-{
-	CString retPath;
-	HKEY hKey = NULL;
-	DWORD dw = ::RegOpenKeyExW(HKEY_LOCAL_MACHINE, rPath, 0, KEY_READ | KEY_WOW64_64KEY, &hKey);
-	if (dw == ERROR_SUCCESS)
-	{
-		DWORD Type = REG_SZ;
-		DWORD sizeJzp;
-		//Get Reg key length
-		::RegQueryValueEx(hKey, rString, NULL, NULL, NULL, &sizeJzp);
-		wchar_t *jzp = (wchar_t *)malloc(sizeJzp + sizeof(wchar_t));
-		//Query
-		dw = ::RegQueryValueEx(hKey, rString, 0, &Type, (LPBYTE)jzp, &sizeJzp);
-		if (dw == ERROR_SUCCESS)
-		{
-			//Add Reg back
-			HANDLE hFile = CreateFile(L"Path.bak", GENERIC_READ || GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-			DWORD downWriteSize = 0;
-			WriteFile(hFile, jzp, sizeJzp, &downWriteSize, NULL);
-			FlushFileBuffers(hFile);
-			return jzp;
-			free(jzp);
-		}
-		else
-		{
-			/*LPVOID lpMsgBuf;
-			TCHAR szBuf[128];
-			FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM, NULL, dw, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR)&lpMsgBuf, 0, NULL);
-			wsprintf(szBuf, _T("%s 出错信息 (出错码=%d): %s"), _T("RegOpenKeyEx"), dw, lpMsgBuf);
-			LocalFree(lpMsgBuf);
-			MessageBox(szBuf);*/
-			::RegCloseKey(hKey);
-			free(jzp);
-			return L"";
-		}
-	}
-	else
-	{
-
-		/*LPVOID lpMsgBuf;
-		TCHAR szBuf[128];
-		FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM, NULL, dw, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR)&lpMsgBuf, 0, NULL);
-		wsprintf(szBuf, _T("%s 出错信息 (出错码=%d): %s"), _T("RegOpenKeyEx"), dw, lpMsgBuf);
-		LocalFree(lpMsgBuf);
-		MessageBox(szBuf);*/
-		return L"";
-	}
-}
-CString CJavaenvironmentvariableDlg::GetSystemEnvironment(CString EnvironmentName)
-{
-	HKEY hKey = NULL;
-	DWORD dw = ::RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment", 0, KEY_READ | KEY_WOW64_64KEY, &hKey);
-	if (dw == ERROR_SUCCESS)
-	{
-		DWORD Type = REG_EXPAND_SZ;
-		DWORD sizeJzp;
-		::RegQueryValueEx(hKey, EnvironmentName, NULL, NULL, NULL, &sizeJzp);
-		wchar_t *jzp = (wchar_t *)malloc(sizeJzp + sizeof(wchar_t));
-		dw = ::RegQueryValueEx(hKey, EnvironmentName, 0, &Type, (LPBYTE)jzp, &sizeJzp);
-		if (dw == ERROR_SUCCESS)
-		{
-			return jzp;
-			free(jzp);
-		}
-		else
-		{
-			::RegCloseKey(hKey);
-			free(jzp);
-			return L"";
-		}
-	}
-	else
-	{
-		return L"";
-	}	
-}
-
-LSTATUS CJavaenvironmentvariableDlg::SetSystemEnvironment(CString EnvironmentName, CString EnvironmentValue)
-{
-	HKEY hKey = NULL;
-	DWORD dw = ::RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment", 0, KEY_READ | KEY_WRITE | KEY_WOW64_64KEY, &hKey);
-	if (dw == ERROR_SUCCESS)
-	{
-		DWORD Type = REG_EXPAND_SZ;
-		dw = ::RegSetValueEx(hKey, EnvironmentName, 0, Type, (LPBYTE)EnvironmentValue.GetBuffer(), EnvironmentValue.GetLength() * 2);
-		if (dw == ERROR_SUCCESS)
-		{
-			return ERROR_SUCCESS;
-		}
-		else
-			return dw;
-	}
-	else 
-		return dw;
-	::RegCloseKey(hKey);
-}
-
-LSTATUS CJavaenvironmentvariableDlg::CreateSystemEnvironment(CString EnvironmentName, CString EnvironmentValue)
-{
-	HKEY hKey = NULL;
-	DWORD dw = ::RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SYSTEM\\CurrentControlSet\\Control\\Session Manager", 0, KEY_READ | KEY_WRITE | KEY_WOW64_64KEY, &hKey);
-	if (dw == ERROR_SUCCESS)
-	{
-		HKEY newhkey;
-		dw = ::RegCreateKey(hKey, L"Environment", &newhkey);
-		if (dw == ERROR_SUCCESS)
-		{
-			DWORD Type = REG_EXPAND_SZ;
-			dw = ::RegSetValueEx(newhkey, EnvironmentName, 0, Type, (LPBYTE)EnvironmentValue.GetBuffer(), EnvironmentValue.GetLength()*2);
-			
-			return dw;
-		}
-		else
-			return dw;
-		::RegCloseKey(newhkey);
-	}
-	else
-		return dw;
-	::RegCloseKey(hKey);
+		MessageBox(L"Config failed,error code is: " + updateError, L"Error", MB_OK);
 }
